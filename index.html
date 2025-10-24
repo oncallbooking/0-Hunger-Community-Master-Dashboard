@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>0% Hunger Community — Master Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--teal:#0ea5a4;--dark:#0f172a}
+    body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;background:linear-gradient(180deg,#f8fafc,#ffffff);color:var(--dark)}
+    .maxw{max-width:1200px;margin:18px auto;padding:20px}
+    .card{background:white;border-radius:12px;box-shadow:0 6px 20px rgba(12,17,26,0.06)}
+    .small{font-size:12px;color:#6b7280}
+    .metric{color:var(--teal);font-weight:700;font-size:20px}
+    .dot{width:10px;height:10px;border-radius:6px;display:inline-block;margin-right:8px}
+    .output-box{padding:8px;border-radius:10px;text-align:center}
+    .muted{color:#6b7280}
+    /* responsive chart container */
+    .chart-wrap{height:220px}
+    .btn{background:var(--teal);color:white;padding:8px 12px;border-radius:8px}
+    .border{border:1px solid #e5e7eb}
+  </style>
+</head>
+<body>
+  <div class="maxw">
+    <header class="flex items-start justify-between mb-4">
+      <div>
+        <h1 class="text-2xl font-bold">0% Hunger Community — Master Dashboard</h1>
+        <p class="small mt-1">Unified view: shelter operations, waste-to-resource outputs, and finance ROI calculator. Interactive & exportable.</p>
+      </div>
+      <div class="text-right">
+        <div class="small">Live counters</div>
+        <div class="flex items-end space-x-6 mt-2">
+          <div class="text-center">
+            <div class="metric" id="counterPeople">5,000</div>
+            <div class="small">People / Shelter</div>
+          </div>
+          <div class="text-center">
+            <div class="metric" id="counterBuses">50</div>
+            <div class="small">Buses Active</div>
+          </div>
+          <div class="text-center">
+            <div class="metric" id="counterWaste">500</div>
+            <div class="small">Tons Processed / Day</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- Left: Map & simulation -->
+      <section class="lg:col-span-2 card p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="font-semibold">Nationwide Simulation</h2>
+            <div class="small">Click a shelter to see details. Run the simulation to visualize buses and processing.</div>
+          </div>
+          <div class="flex gap-2">
+            <button id="btnStart" class="btn">Start</button>
+            <button id="btnPause" class="border px-3 py-2 rounded">Pause</button>
+            <button id="btnSpeed" class="border px-3 py-2 rounded">Speed x2</button>
+          </div>
+        </div>
+
+        <!-- SVG map simplified -->
+        <div class="mb-3">
+          <svg class="w-full" viewBox="0 0 1200 420" id="mapSvg">
+            <rect x="0" y="0" width="1200" height="420" rx="10" fill="#f8fafc"/>
+            <!-- shelters as icons -->
+            <g id="shelters">
+              <g class="shelter" data-id="delhi" transform="translate(280,90)">
+                <circle r="20" fill="#0ea5a4" stroke="#064e3b" stroke-width="2" class="shelter-dot"/>
+                <text x="34" y="6" font-weight="700">Delhi</text>
+              </g>
+              <g class="shelter" data-id="mumbai" transform="translate(130,240)">
+                <circle r="20" fill="#f97316" stroke="#7c2d12" stroke-width="2" class="shelter-dot"/>
+                <text x="34" y="6" font-weight="700">Mumbai</text>
+              </g>
+              <g class="shelter" data-id="kolkata" transform="translate(760,90)">
+                <circle r="20" fill="#60a5fa" stroke="#1e40af" stroke-width="2" class="shelter-dot"/>
+                <text x="34" y="6" font-weight="700">Kolkata</text>
+              </g>
+              <g class="shelter" data-id="chennai" transform="translate(820,300)">
+                <circle r="20" fill="#fde68a" stroke="#92400e" stroke-width="2" class="shelter-dot"/>
+                <text x="34" y="6" font-weight="700">Chennai</text>
+              </g>
+              <g class="shelter" data-id="bengaluru" transform="translate(560,300)">
+                <circle r="20" fill="#bbf7d0" stroke="#166534" stroke-width="2" class="shelter-dot"/>
+                <text x="34" y="6" font-weight="700">Bengaluru</text>
+              </g>
+            </g>
+
+            <!-- factory icon -->
+            <g id="factory" transform="translate(990,200)">
+              <rect x="-80" y="-40" width="160" height="80" rx="8" fill="#fff7ed" stroke="#92400e"/>
+              <text x="0" y="-52" text-anchor="middle" font-weight="700">Factory</text>
+              <g id="gear1"><circle r="16" fill="#c7d2fe" stroke="#3730a3"/></g>
+            </g>
+
+          </svg>
+        </div>
+
+        <!-- Resource chart -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="card p-3">
+            <div class="flex items-center justify-between mb-2">
+              <div><strong>Resource Outputs (t/day)</strong><div class="small">Based on Daily Waste input & recovery rates</div></div>
+              <div class="small">Update daily tons → Apply</div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="resChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card p-3">
+            <div class="mb-2"><strong>Outputs (quick view)</strong></div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="output-box" style="background:#fde68a">Compost<br><span id="valCompostSmall">0 t</span></div>
+              <div class="output-box" style="background:#e6f2ff">Paper<br><span id="valPaperSmall">0 t</span></div>
+              <div class="output-box" style="background:#ffe4e6">Plastic<br><span id="valPlasticSmall">0 t</span></div>
+              <div class="output-box" style="background:#e9f5ec">Glass<br><span id="valGlassSmall">0 t</span></div>
+              <div class="output-box" style="background:#f3f4f6">Metal<br><span id="valMetalSmall">0 t</span></div>
+              <div class="output-box" style="background:#d1fae5">RDF<br><span id="valRdfSmall">0 t</span></div>
+            </div>
+
+            <div class="mt-3 flex gap-2">
+              <input id="inputTons" type="number" min="1" value="500" class="border p-2 rounded w-32" />
+              <button id="applyCalc" class="btn">Apply</button>
+              <button id="exportCsv" class="border px-3 py-2 rounded">Export CSV</button>
+            </div>
+
+            <div class="mt-3 small muted">Presets: <button id="presetSmall" class="underline">50</button> / <button id="presetMed" class="underline">500</button> / <button id="presetLarge" class="underline">5000</button> t/day</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Finance calculator -->
+      <aside class="card p-4">
+        <h3 class="font-semibold">Finance & ROI</h3>
+        <div class="small mt-1">Enter prices & costs. Click <strong>Calculate</strong>.</div>
+
+        <div class="mt-3 space-y-2">
+          <label class="small">Compost (₹/t)</label>
+          <input id="priceCompost" type="number" value="3000" class="w-full border p-2 rounded" />
+          <label class="small">Paper (₹/t)</label>
+          <input id="pricePaper" type="number" value="8000" class="w-full border p-2 rounded" />
+          <label class="small">Plastic (₹/t)</label>
+          <input id="pricePlastic" type="number" value="25000" class="w-full border p-2 rounded" />
+          <label class="small">Metal (₹/t)</label>
+          <input id="priceMetal" type="number" value="60000" class="w-full border p-2 rounded" />
+          <label class="small">RDF (₹/t)</label>
+          <input id="priceRdf" type="number" value="4000" class="w-full border p-2 rounded" />
+        </div>
+
+        <div class="mt-3 space-y-2">
+          <label class="small">Processing cost (₹/t)</label>
+          <input id="procCost" type="number" value="1500" class="w-full border p-2 rounded" />
+          <label class="small">Labor cost per person/day (₹)</label>
+          <input id="laborCostPer" type="number" value="150" class="w-full border p-2 rounded" />
+          <label class="small">Kitchen cost per meal (₹)</label>
+          <input id="costPerMeal" type="number" value="20" class="w-full border p-2 rounded" />
+          <label class="small">Meals per day</label>
+          <input id="mealsPerDay" type="number" value="3" class="w-full border p-2 rounded" />
+          <label class="small">People per shelter</label>
+          <input id="peopleCount" type="number" value="5000" class="w-full border p-2 rounded" />
+          <label class="small">Capital cost (₹)</label>
+          <input id="capitalCost" type="number" value="100000000" class="w-full border p-2 rounded" />
+        </div>
+
+        <div class="mt-4">
+          <button id="calcFinance" class="btn w-full">Calculate</button>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-2 small">
+          <div class="flex justify-between"><div>Daily Revenue</div><div id="revDaily">₹ 0</div></div>
+          <div class="flex justify-between"><div>Daily Processing Cost</div><div id="costDaily">₹ 0</div></div>
+          <div class="flex justify-between"><div>Daily Kitchen Cost</div><div id="kitchenDaily">₹ 0</div></div>
+          <div class="flex justify-between font-semibold"><div>Daily Net</div><div id="netDaily">₹ 0</div></div>
+          <div class="flex justify-between"><div>Annual Net</div><div id="netAnnual">₹ 0</div></div>
+          <div class="flex justify-between"><div>Payback (yrs)</div><div id="payback">-</div></div>
+          <div class="flex justify-between"><div>ROI (%)</div><div id="roiPc">-</div></div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="text-center small muted mt-6">Prototype dashboard • Editable numbers • Export CSV for reports</footer>
+  </div>
+
+  <script>
+    // --- assumptions & per-tonne calc ---
+    const assumptions = {
+      composition: { organics:0.50, paper:0.12, plastic:0.08, glass:0.04, metal:0.03, others:0.23 },
+      recovery: { organics_compost_yield:0.35, paper:0.80, plastic:0.70, glass:0.80, metal:0.90, rdf:0.15 }
+    };
+
+    function perTonneOutputs(){
+      const inKg = 1000;
+      const organics = inKg * assumptions.composition.organics;
+      const compost = organics * assumptions.recovery.organics_compost_yield; // kg
+      const paper = inKg * assumptions.composition.paper * assumptions.recovery.paper;
+      const plastic = inKg * assumptions.composition.plastic * assumptions.recovery.plastic;
+      const glass = inKg * assumptions.composition.glass * assumptions.recovery.glass;
+      const metal = inKg * assumptions.composition.metal * assumptions.recovery.metal;
+      const rdf = inKg * assumptions.recovery.rdf;
+      return { compost, paper, plastic, glass, metal, rdf };
+    }
+
+    const perT = perTonneOutputs();
+
+    // --- chart ---
+    const ctx = document.getElementById('resChart').getContext('2d');
+    const resChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Compost','Paper','Plastic','Glass','Metal','RDF'],
+        datasets: [{ label:'t/day', data:[0,0,0,0,0,0], backgroundColor:['#fde68a','#e6f2ff','#ffe4e6','#e9f5ec','#f3f4f6','#d1fae5'], borderRadius:6 }]
+      },
+      options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+
+    function updateOutputs(dailyT){
+      const compostT = (perT.compost * dailyT /1000);
+      const paperT = (perT.paper * dailyT /1000);
+      const plasticT = (perT.plastic * dailyT /1000);
+      const glassT = (perT.glass * dailyT /1000);
+      const metalT = (perT.metal * dailyT /1000);
+      const rdfT = (perT.rdf * dailyT /1000);
+
+      // update DOM small boxes
+      document.getElementById('valCompostSmall').textContent = compostT.toFixed(2) + ' t';
+      document.getElementById('valPaperSmall').textContent = paperT.toFixed(2) + ' t';
+      document.getElementById('valPlasticSmall').textContent = plasticT.toFixed(2) + ' t';
+      document.getElementById('valGlassSmall').textContent = glassT.toFixed(2) + ' t';
+      document.getElementById('valMetalSmall').textContent = metalT.toFixed(2) + ' t';
+      document.getElementById('valRdfSmall').textContent = rdfT.toFixed(2) + ' t';
+
+      // chart update
+      resChart.data.datasets[0].data = [compostT, paperT, plasticT, glassT, metalT, rdfT];
+      resChart.update();
+
+      // update summary counters
+      document.getElementById('counterWaste').textContent = Math.round(dailyT).toLocaleString();
+      document.getElementById('counterPeople').textContent = Number(document.getElementById('peopleCount')?.value || 5000).toLocaleString();
+    }
+
+    // apply & presets
+    document.getElementById('applyCalc').addEventListener('click', ()=>{
+      const t = Number(document.getElementById('inputTons').value) || 0;
+      updateOutputs(t);
+    });
+    document.getElementById('presetSmall').addEventListener('click', ()=>{ document.getElementById('inputTons').value=50; document.getElementById('applyCalc').click(); });
+    document.getElementById('presetMed').addEventListener('click', ()=>{ document.getElementById('inputTons').value=500; document.getElementById('applyCalc').click(); });
+    document.getElementById('presetLarge').addEventListener('click', ()=>{ document.getElementById('inputTons').value=5000; document.getElementById('applyCalc').click(); });
+
+    // export CSV
+    document.getElementById('exportCsv').addEventListener('click', ()=>{
+      const t = Number(document.getElementById('inputTons').value) || 0;
+      const compostT = (perT.compost * t /1000);
+      const paperT = (perT.paper * t /1000);
+      const plasticT = (perT.plastic * t /1000);
+      const glassT = (perT.glass * t /1000);
+      const metalT = (perT.metal * t /1000);
+      const rdfT = (perT.rdf * t /1000);
+      const rows = [
+        ['Resource','t/day'],
+        ['Compost',compostT.toFixed(2)],
+        ['Paper',paperT.toFixed(2)],
+        ['Plastic',plasticT.toFixed(2)],
+        ['Glass',glassT.toFixed(2)],
+        ['Metal',metalT.toFixed(2)],
+        ['RDF',rdfT.toFixed(2)]
+      ];
+      const csv = rows.map(r=>r.join(',')).join('\n');
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'resource-outputs.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // --- Finance calculations ---
+    document.getElementById('calcFinance').addEventListener('click', ()=>{
+      const dailyT = Number(document.getElementById('inputTons').value) || 0;
+      const compostT = (perT.compost * dailyT /1000);
+      const paperT = (perT.paper * dailyT /1000);
+      const plasticT = (perT.plastic * dailyT /1000);
+      const metalT = (perT.metal * dailyT /1000);
+      const rdfT = (perT.rdf * dailyT /1000);
+
+      const pCompost = Number(document.getElementById('priceCompost').value) || 0;
+      const pPaper = Number(document.getElementById('pricePaper').value) || 0;
+      const pPlastic = Number(document.getElementById('pricePlastic').value) || 0;
+      const pMetal = Number(document.getElementById('priceMetal').value) || 0;
+      const pRdf = Number(document.getElementById('priceRdf').value) || 0;
+
+      const rev = compostT*pCompost + paperT*pPaper + plasticT*pPlastic + metalT*pMetal + rdfT * pRdf;
+
+      const procCostPerT = Number(document.getElementById('procCost').value) || 0;
+      const procCost = procCostPerT * dailyT;
+      const laborPer = Number(document.getElementById('laborCostPer').value) || 0;
+      const people = Number(document.getElementById('peopleCount').value) || 0;
+      const laborTotal = laborPer * people;
+      const costPerMeal = Number(document.getElementById('costPerMeal')?.value || 20);
+      const mealsPerDay = Number(document.getElementById('mealsPerDay')?.value || 3);
+      const kitchenCost = costPerMeal * mealsPerDay * people;
+
+      const dailyCost = procCost + laborTotal + kitchenCost;
+      const dailyNet = rev - dailyCost;
+      const annualNet = dailyNet * 365;
+      const capital = Number(document.getElementById('capitalCost').value) || 0;
+      const payback = annualNet>0 ? (capital/annualNet).toFixed(1) : '—';
+      const roi = annualNet>0 ? ((annualNet/capital)*100).toFixed(2) : '—';
+
+      function fmt(n){ return '₹ ' + Number(n).toLocaleString(undefined,{maximumFractionDigits:0}); }
+      document.getElementById('revDaily').textContent = fmt(rev);
+      document.getElementById('costDaily').textContent = fmt(procCost);
+      document.getElementById('kitchenDaily').textContent = fmt(kitchenCost);
+      document.getElementById('netDaily').textContent = fmt(dailyNet);
+      document.getElementById('netAnnual').textContent = fmt(annualNet);
+      document.getElementById('payback').textContent = payback;
+      document.getElementById('roiPc').textContent = roi==='—' ? '—' : roi + ' %';
+    });
+
+    // small interactions
+    document.querySelectorAll('.shelter').forEach(s=> s.addEventListener('click', ()=>{
+      const id = s.getAttribute('data-id');
+      alert(`Shelter details: ${id}\nCapacity: 5000\nHalls: 100\nBuses: 50\nServices: Kitchen, Training, Recycling`);
+    }));
+
+    // init
+    updateOutputs(Number(document.getElementById('inputTons').value));
+
+  </script>
+</body>
+</html>
